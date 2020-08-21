@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <AssemblyName>PolyCoder.Preamble.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.msbuild" Version="2.8.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="FsCheck" Version="2.14.2" />
+    <PackageReference Include="FsCheck.Nunit" Version="2.14.2" />
+    <PackageReference Include="FsUnit" Version="3.8.1" />
+    <PackageReference Include="nunit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.16.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
+    <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
+    <PackageReference Include="Unquote" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="PreambleTests.fs" />
+    <Compile Include="SystemTests.fs" />
+    <Compile Include="SeqTests.fs" />
+    <Compile Include="MaybeTests.fs" />
+    <Compile Include="OrElseTests.fs" />
+    <Compile Include="MaybeAsyncTests.fs" />
+    <Compile Include="ResultAndTests.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PolyCoder.Preamble\PolyCoder.Preamble.fsproj" />
+  </ItemGroup>
+
+</Project>
