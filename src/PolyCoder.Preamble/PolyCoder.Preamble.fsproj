@@ -8,7 +8,7 @@
     <Company>PolyCoder</Company>
     <Product>PolyCoder FSharp Framework</Product>
     <Description>Basic and common functionality to be used in FSharp projects</Description>
-    <PackageProjectUrl>https://github.com/poly-coder/PolyCoder.Preamble</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/poly-coder/PolyCoderLibs</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AssemblyName>PolyCoder.Preamble</AssemblyName>
   </PropertyGroup>

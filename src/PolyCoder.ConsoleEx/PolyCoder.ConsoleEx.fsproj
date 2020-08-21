@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <PackageId>PolyCoder.ConsoleEx</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Iskander Sierra</Authors>
+    <Company>PolyCoder</Company>
+    <Product>PolyCoder FSharp Framework</Product>
+    <Description>Utilities to make easier working with Console in C# and F#</Description>
+    <PackageProjectUrl>https://github.com/poly-coder/PolyCoderLibs</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <AssemblyName>PolyCoder.ConsoleEx</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Contracts.fs" />
+  </ItemGroup>
+
+</Project>
