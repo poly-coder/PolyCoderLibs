@@ -11,6 +11,8 @@
     <PackageProjectUrl>https://github.com/poly-coder/PolyCoderLibs</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <AssemblyName>PolyCoder.Preamble</AssemblyName>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>

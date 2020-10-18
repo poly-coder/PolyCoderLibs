@@ -62,6 +62,18 @@ module IAsyncGetter =
   let toSink (instance: IAsyncGetter<'v>) : AsyncGetterSink<'v> =
     fun sink -> ResultSink.ofAsync sink instance.get
 
+  let bindValue fn (getter: IAsyncGetter<'a>) : IAsyncGetter<'b> =
+    { new IAsyncGetter<'b> with
+      member _.get() = async {
+        match! getter.get() with
+        | GetBufferIsFull -> return GetBufferIsFull
+        | ValueWasGet value ->
+          let! value' = fn(value)
+          return ValueWasGet(value')
+      }}
+
+  let mapValue fn = bindValue (fn >> async.Return)
+
 
 module IAsyncPutter =
   let ofRecord (record: AsyncPutter<'v>) : IAsyncPutter<'v> =
@@ -78,12 +90,34 @@ module IAsyncPutter =
   let toSink (instance: IAsyncPutter<'v>) : AsyncPutterSink<'v> =
     fun (v, sink) -> ResultSink.ofAsync sink (fun () -> instance.put v)
 
+  let bindValue fn (putter: IAsyncPutter<'a>) : IAsyncPutter<'b> =
+    { new IAsyncPutter<'b> with
+      member _.put(value) = async {
+        let! value' = fn value
+        return! putter.put value'
+      }}
+
+  let mapValue fn = bindValue (fn >> async.Return)
+
 
 module AsyncGetter =
   let ofInterface = IAsyncGetter.toRecord
   let toInterface = IAsyncGetter.ofRecord
   let ofSink<'v> : (AsyncGetterSink<'v> -> AsyncGetter<'v>) = IAsyncGetter.ofSink >> ofInterface
   let toSink<'v> : (AsyncGetter<'v> -> AsyncGetterSink<'v>) = toInterface >> IAsyncGetter.toSink
+
+  let bindValue fn (getter: AsyncGetter<'a>) : AsyncGetter<'b> =
+    { 
+      get = fun () -> async {
+        match! getter.get() with
+        | GetBufferIsFull -> return GetBufferIsFull
+        | ValueWasGet value ->
+          let! value' = fn(value)
+          return ValueWasGet(value')
+      }
+    }
+
+  let mapValue fn = bindValue (fn >> async.Return)
 
 
 module AsyncPutter =
@@ -92,6 +126,16 @@ module AsyncPutter =
   let ofSink<'v> : (AsyncPutterSink<'v> -> AsyncPutter<'v>) = IAsyncPutter.ofSink >> ofInterface
   let toSink<'v> : (AsyncPutter<'v> -> AsyncPutterSink<'v>) = toInterface >> IAsyncPutter.toSink
 
+  let bindValue fn (putter: AsyncPutter<'a>) : AsyncPutter<'b> =
+    { 
+      put = fun value -> async {
+        let! value' = fn value
+        return! putter.put value'
+      }
+    }
+
+  let mapValue fn = bindValue (fn >> async.Return)
+
 
 module AsyncGetterSink =
   let ofInterface = IAsyncGetter.toSink
@@ -99,12 +143,46 @@ module AsyncGetterSink =
   let ofRecord<'v> : (AsyncGetter<'v> -> AsyncGetterSink<'v>) = IAsyncGetter.ofRecord >> ofInterface
   let toRecord<'v> : (AsyncGetterSink<'v> -> AsyncGetter<'v>) = toInterface >> IAsyncGetter.toRecord
 
+  let bindValue fn (getter: AsyncGetterSink<'a>) : AsyncGetterSink<'b> =
+    fun sink -> getter(fun result ->
+      match result with
+      | Ok(GetBufferIsFull) ->
+        sink(Ok(GetBufferIsFull))
+      | Ok(ValueWasGet value) ->
+        async {
+          let! value' = fn(value)
+          sink(Ok(ValueWasGet(value')))
+        } |> Async.Start
+      | Error(exn) ->
+        sink(Error(exn)))
+
+  let mapValue fn (getter: AsyncGetterSink<'a>) : AsyncGetterSink<'b> =
+     fun sink -> getter(fun result ->
+       match result with
+       | Ok(GetBufferIsFull) ->
+         sink(Ok(GetBufferIsFull))
+       | Ok(ValueWasGet value) ->
+           sink(Ok(ValueWasGet(fn value)))
+       | Error(exn) ->
+         sink(Error(exn)))
+
+
 
 module AsyncPutterSink =
   let ofInterface = IAsyncPutter.toSink
   let toInterface = IAsyncPutter.ofSink
   let ofRecord<'v> : (AsyncPutter<'v> -> AsyncPutterSink<'v>) = IAsyncPutter.ofRecord >> ofInterface
   let toRecord<'v> : (AsyncPutterSink<'v> -> AsyncPutter<'v>) = toInterface >> IAsyncPutter.toRecord
+
+  let bindValue fn (putter: AsyncPutterSink<'a>) : AsyncPutterSink<'b> =
+    fun (value, sink) -> 
+      async {
+        let! value' = fn value
+        putter(value', sink)
+      } |> Async.Start
+
+  let mapValue fn (putter: AsyncPutterSink<'a>) : AsyncPutterSink<'b> =
+    fun (value, sink) -> putter(fn value, sink)
 
 
 module IAsyncBuffer =
@@ -138,6 +216,24 @@ module IAsyncBuffer =
     | Get sink -> ResultSink.ofAsync sink instance.get
     | Put (v, sink) -> ResultSink.ofAsync sink (fun () -> instance.put v)
 
+  let bindValue fnIn fnOut (buffer: IAsyncBuffer<'a>) : IAsyncBuffer<'b> =
+    { new IAsyncBuffer<'b> with
+      member _.get() = async {
+        match! buffer.get() with
+        | GetBufferIsFull ->
+          return GetBufferIsFull
+        | ValueWasGet value ->
+          let! value' = fnOut(value)
+          return ValueWasGet(value')
+      }
+      member _.put(value) = async {
+        let! value' = fnIn value
+        return! buffer.put value'
+      }
+    }
+
+  let mapValue fnIn fnOut = bindValue (fnIn >> async.Return) (fnOut >> async.Return)
+
 
 module AsyncBuffer =
   let combine (getter: AsyncGetter<'v>) (putter: AsyncPutter<'v>) : AsyncBuffer<'v> =
@@ -152,6 +248,24 @@ module AsyncBuffer =
   let toInterface = IAsyncBuffer.ofRecord
   let ofSink<'v> : (AsyncBufferSink<'v> -> AsyncBuffer<'v>) = IAsyncBuffer.ofSink >> ofInterface
   let toSink<'v> : (AsyncBuffer<'v> -> AsyncBufferSink<'v>) = toInterface >> IAsyncBuffer.toSink
+
+  let bindValue fnIn fnOut (buffer: AsyncBuffer<'a>) : AsyncBuffer<'b> =
+    { 
+      get = fun () -> async {
+        match! buffer.get() with
+        | GetBufferIsFull ->
+          return GetBufferIsFull
+        | ValueWasGet value ->
+          let! value' = fnOut(value)
+          return ValueWasGet(value')
+      }
+      put = fun (value) -> async {
+        let! value' = fnIn value
+        return! buffer.put value'
+      }
+    }
+
+  let mapValue fnIn fnOut = bindValue (fnIn >> async.Return) (fnOut >> async.Return)
 
 
 module AsyncBufferSink =
@@ -168,6 +282,29 @@ module AsyncBufferSink =
   let toInterface = IAsyncBuffer.ofSink
   let ofRecord<'v> : (AsyncBuffer<'v> -> AsyncBufferSink<'v>) = IAsyncBuffer.ofRecord >> ofInterface
   let toRecord<'v> : (AsyncBufferSink<'v> -> AsyncBuffer<'v>) = toInterface >> IAsyncBuffer.toRecord
+
+  let bindValue fnIn fnOut (buffer: AsyncBufferSink<'a>) : AsyncBufferSink<'b> =
+    function
+    | Get sink ->
+        buffer(Get(fun result ->
+          match result with
+          | Ok(GetBufferIsFull) ->
+            sink(Ok(GetBufferIsFull))
+          | Ok(ValueWasGet value') ->
+            async {
+              let! value = fnOut(value')
+              sink(Ok(ValueWasGet value))
+            } |> Async.Start
+          | Error e ->
+            sink(Error e)
+        ))
+    | Put (value, sink) ->
+      async {
+        let! value' = fnIn value
+        buffer(Put(value', sink))
+      } |> Async.Start
+
+  let mapValue fnIn fnOut = bindValue (fnIn >> async.Return) (fnOut >> async.Return)
 
 
 module BufferMailbox =
