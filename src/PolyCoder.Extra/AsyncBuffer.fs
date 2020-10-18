@@ -1,4 +1,4 @@
-﻿namespace PolyCoder.Extra
+﻿namespace PolyCoder.Extra.Collections
 
 open System.Collections.Generic
 open FSharp.Control
@@ -187,27 +187,31 @@ module BufferMailbox =
   let withGetBufferSize n options = { options with getBufferSize = Some n }
   let withPutBufferSize n options = { options with putBufferSize = Some n }
 
-  let create (options: Options) =
+  type Command<'a> =
+    | PutValue of 'a * AsyncReplyChannel<Result<AsyncPutResult, exn>>
+    | GetValue of AsyncReplyChannel<Result<AsyncGetResult<'a>, exn>>
+
+  let create (options: Options) : MailboxProcessor<Command<'a>> =
     MailboxProcessor.Start (fun mb ->
-      let putters = Queue<'a * ResultSink<AsyncPutResult>>()
+      let putters = Queue<'a * AsyncReplyChannel<Result<AsyncPutResult, exn>>>()
       let values = Queue<'a>(options.bufferSize)
-      let getters = Queue<ResultSink<AsyncGetResult<'a>>>()
+      let getters = Queue<AsyncReplyChannel<Result<AsyncGetResult<'a>, exn>>>()
 
       let rec loop () = async {
         let! cmd = mb.Receive()
 
         match cmd with
-        | Put (value, putReply) ->
+        | PutValue (value, putReply) ->
           try
             if values.Count < options.bufferSize then
               // If there is space available in the values buffer, put the value immediately
               values.Enqueue(value)
-              putReply(Ok(ValueWasPut))
+              putReply.Reply(Ok(ValueWasPut))
             elif getters.Count > 0 then
               // If there is a getter waiting, then the buffer has size 0, so give the value directly to the first getter
               let getReply = getters.Dequeue()
-              getReply(Ok(ValueWasGet value))
-              putReply(Ok(ValueWasPut))
+              getReply.Reply(Ok(ValueWasGet value))
+              putReply.Reply(Ok(ValueWasPut))
             else
               // Check if there is space to put the operation in standBy
               match options.putBufferSize with
@@ -218,20 +222,20 @@ module BufferMailbox =
                 putters.Enqueue(value, putReply)
 
               | Some _ ->
-                putReply(Ok(PutBufferIsFull))
-          with exn -> putReply(Error(exn))
+                putReply.Reply(Ok(PutBufferIsFull))
+          with exn -> putReply.Reply(Error(exn))
 
-        | Get getReply ->
+        | GetValue getReply ->
           try
             if values.Count > 0 then
               // There are values in the buffer, take one and leave
               let value = values.Dequeue()
-              getReply(Ok(ValueWasGet value))
+              getReply.Reply(Ok(ValueWasGet value))
             elif putters.Count > 0 then
               // If there is a putter waiting, then the buffer has size 0, so take the value directly from the first putter
               let value, putReply = putters.Dequeue()
-              putReply(Ok(ValueWasPut))
-              getReply(Ok(ValueWasGet value))
+              putReply.Reply(Ok(ValueWasPut))
+              getReply.Reply(Ok(ValueWasGet value))
             else
               // Check if there is space to put the operation in standBy
               match options.getBufferSize with
@@ -242,11 +246,28 @@ module BufferMailbox =
                 getters.Enqueue(getReply)
 
               | Some _ ->
-                getReply(Ok(GetBufferIsFull))
-          with exn -> getReply(Error(exn))
+                getReply.Reply(Ok(GetBufferIsFull))
+          with exn -> getReply.Reply(Error(exn))
 
         return! loop ()
       }
 
       loop()
     )
+
+  let toSink (mailbox: MailboxProcessor<Command<_>>) : AsyncBufferSink<_> =
+    function
+    | Get sink ->
+      Async.Start(async {
+        let! result = mailbox.PostAndAsyncReply(fun reply -> GetValue(reply))
+        sink(result)
+      })
+
+    | Put (v, sink) ->
+      Async.Start(async {
+        let! result = mailbox.PostAndAsyncReply(fun reply -> PutValue(v, reply))
+        sink(result)
+      })
+
+  let toInterface<'a> : MailboxProcessor<Command<'a>> -> IAsyncBuffer<'a> = toSink >> AsyncBufferSink.toInterface
+  let toRecord<'a> : MailboxProcessor<Command<'a>> -> AsyncBuffer<'a> = toSink >> AsyncBufferSink.toRecord
