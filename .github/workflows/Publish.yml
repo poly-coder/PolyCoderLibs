@@ -1,0 +1,51 @@
+name: Publish
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.201
+
+    # - name: Install Report Generator
+    #   run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Build
+      run: dotnet build --configuration Release
+
+    - name: Test
+      run: dotnet test --verbosity normal /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+
+    - name: Generate Coverage Report
+      # run: reportgenerator -reports:**/coverage.cobertura.xml -targetdir:Report -reporttypes:HtmlInline_AzurePipelines;Cobertura
+      uses: danielpalme/ReportGenerator-GitHub-Action@4.5.8
+      with:
+        reports: "**/coverage.cobertura.xml"
+        targetdir: "Report"
+        reporttypes: "HtmlInline;Cobertura"
+        tag: '${{ github.run_number }}_${{ github.run_id }}'
+
+    - name: Publish Coverage Report
+      if: ${{ github.event_name == 'pull_request' }}
+      uses: 5monkeys/cobertura-action@master
+      with:
+        path: Preamble.Tests/coverage.cobertura.xml
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        minimum_coverage: 75
+
+    - name: Pack and Publish
+      run: |
+        dotnet pack --configuration Release --output . ./src/PolyCoder.Preamble
+        dotnet pack --configuration Release --output . ./src/PolyCoder.Extra
+        dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
+        rm "*.nupkg"
