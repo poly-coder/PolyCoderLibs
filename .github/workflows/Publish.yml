@@ -48,4 +48,3 @@ jobs:
         dotnet pack --configuration Release --output . ./src/PolyCoder.Preamble
         dotnet pack --configuration Release --output . ./src/PolyCoder.Extra
         dotnet nuget push "*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ secrets.NUGET_TOKEN }}
-        rm "*.nupkg"

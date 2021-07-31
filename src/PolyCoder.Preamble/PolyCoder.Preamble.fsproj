@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <PackageId>PolyCoder.Preamble</PackageId>
-    <Version>0.0.14</Version>
+    <Version>0.0.15</Version>
     <Authors>Iskander Sierra</Authors>
     <Company>PolyCoder</Company>
     <Product>PolyCoder FSharp Framework</Product>
@@ -34,6 +34,10 @@
     <Compile Include="Map.fs" />
     <Compile Include="Transformer.fs" />
     <Compile Include="Convertion.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="5.0.2" />
   </ItemGroup>
 
 </Project>

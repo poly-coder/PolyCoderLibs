@@ -9,21 +9,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.msbuild" Version="2.9.0">
+    <PackageReference Include="coverlet.msbuild" Version="3.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="FsCheck" Version="2.14.3" />
-    <PackageReference Include="FsCheck.Nunit" Version="2.14.3" />
-    <PackageReference Include="FsUnit" Version="4.0.1" />
-    <PackageReference Include="nunit" Version="3.12.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.17.0">
+    <PackageReference Include="FsCheck" Version="2.15.3" />
+    <PackageReference Include="FsCheck.Nunit" Version="2.15.3" />
+    <PackageReference Include="FsUnit" Version="4.0.5" />
+    <PackageReference Include="nunit" Version="3.13.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.10.0" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.0" />
-    <PackageReference Include="Unquote" Version="5.0.0" />
+    <PackageReference Include="Unquote" Version="6.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,6 +39,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PolyCoder.Preamble\PolyCoder.Preamble.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="5.0.2" />
   </ItemGroup>
 
 </Project>
